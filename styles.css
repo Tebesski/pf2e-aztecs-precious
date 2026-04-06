@@ -1,0 +1,20 @@
+#aztecs-precious-menu select {
+   color: #ffffff !important;
+   background-color: #222222 !important;
+   border: 1px solid #555555 !important;
+}
+
+#aztecs-precious-menu select option {
+   color: #ffffff !important;
+   background-color: #222222 !important;
+}
+
+#preview-shadow-color {
+   color: #ffffff !important;
+}
+#preview-shadow-color > input {
+   color: #ffffff !important;
+}
+#preview-shadow-color::part(input) {
+   color: #ffffff !important;
+}

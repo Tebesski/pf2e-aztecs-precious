@@ -1,0 +1,22 @@
+<div class="form-group flexcol" style="gap: 15px; margin-bottom: 10px;">
+    <div class="flexrow" style="align-items: center;">
+        <label style="flex: 1; font-weight: bold;">{{localize "AZTEC.UI.ShadowType"}}</label>
+        <select id="preview-shadow-type" style="flex: 2; color: #ffffff; background: #222; border: 1px solid #555;">
+            <option value="sweetener" {{#if isSweetener}}selected{{/if}}>{{localize "AZTEC.UI.Sweetener"}}</option>
+            <option value="epic" {{#if isEpic}}selected{{/if}}>{{localize "AZTEC.UI.Epic"}}</option>
+        </select>
+    </div>
+    <div class="flexcol" style="background: #222; padding: 15px; border-radius: 5px; gap: 15px;">
+        <div style="text-align: center;">
+            <span id="preview-text" style="font-size: 24px; font-weight: bold; font-family: 'Signika', sans-serif; color: {{baseColor}};">
+                {{label}}
+            </span>
+        </div>
+        <div class="flexrow" style="align-items: center;">
+            <label style="flex: 1; color: #fff; text-align: right; padding-right: 10px;">{{localize "AZTEC.UI.ShadowColour"}}</label>
+            <div style="flex: 1;">
+                <color-picker id="preview-shadow-color" value="{{currentColor}}"></color-picker>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,37 @@
+{
+   "id": "pf2e-aztecs-precious",
+   "title": "PF2e Aztec's Precious",
+   "description": "Add custom rarities to your PF2e game.",
+   "version": "#{VERSION}#",
+   "compatibility": {
+      "minimum": "13",
+      "verified": "13"
+   },
+   "authors": [
+      {
+         "name": "Aztec",
+         "discord": "two.bears.high.fiving"
+      }
+   ],
+   "esmodules": ["src/main.js"],
+   "languages": [
+      {
+         "lang": "en",
+         "name": "English",
+         "path": "languages/en.json"
+      },
+      {
+         "lang": "ua",
+         "name": "Українська",
+         "path": "languages/ua.json"
+      },
+      {
+         "lang": "ru",
+         "name": "Русский",
+         "path": "languages/ru.json"
+      }
+   ],
+   "url": "#{URL}#",
+   "manifest": "#{MANIFEST}#",
+   "download": "#{DOWNLOAD}#"
+}
