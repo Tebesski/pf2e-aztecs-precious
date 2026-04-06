@@ -1,6 +1,6 @@
 # PF2e Aztec's Precious
 
-A Foundry VTT module for the Pathfinder 2e system that completely overhauls item rarities and also enables for an animated loot drop.
+A module for PF2e that completely overhauls item rarities and also enables for an animated loot drop.
 
 ![managerShowcase](https://github.com/user-attachments/assets/0f402250-c9fb-432d-94d4-b4d3a76f34b8)
 
