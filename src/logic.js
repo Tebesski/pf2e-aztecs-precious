@@ -387,6 +387,133 @@ export function injectRarities() {
       if (item.parent && item.parent.type === "loot") updateLootBeams()
    })
 
+   const applyItemPilesRarity = (...args) => {
+      let htmlEl = null
+      let targetItem = null
+
+      args.forEach((arg) => {
+         if (arg instanceof HTMLElement) htmlEl = arg
+         else if (arg && arg.jquery) htmlEl = arg[0]
+         else if (arg && typeof arg === "object") {
+            const possibleItem = arg.item || arg.vaultItem || arg
+            if (
+               possibleItem.documentName === "Item" ||
+               (possibleItem.type && possibleItem.system)
+            ) {
+               targetItem = possibleItem
+            }
+         }
+      })
+
+      if (!htmlEl || !targetItem) return
+
+      const rarity = targetItem.system?.traits?.rarity || "common"
+      const customData = allRarities[rarity]
+      if (!customData) return
+
+      const $el = $(htmlEl)
+
+      let titleEl = $el
+         .find(
+            ".item-piles-name, .item-piles-text, .item-piles-title, .item-name",
+         )
+         .first()
+      if (!titleEl.length && $el.is("[class*='-name'], [class*='-title']"))
+         titleEl = $el
+
+      let imageEl = $el
+         .find(".item-piles-img-container, .item-piles-image, .item-image, img")
+         .first()
+      if (
+         !imageEl.length &&
+         $el.is("img, [class*='-image'], [class*='-img-container']")
+      )
+         imageEl = $el
+      if (!imageEl.length) imageEl = $el
+
+      if (titleEl.length) {
+         titleEl.css("color", customData.color)
+         if (customData.hasShadow) {
+            const shadow =
+               customData.shadowType === "sweetener"
+                  ? `0px 0px 1px ${customData.shadowColor}`
+                  : `1px 1px 1px ${customData.shadowColor}`
+            titleEl.css("text-shadow", shadow)
+         }
+      }
+
+      if (imageEl.length) {
+         const useGlobalInset = game.settings.get(
+            MODULE_ID,
+            SETTINGS.GLOBAL_INSET_SHADOW,
+         )
+
+         imageEl.removeClass((index, className) => {
+            return (
+               className.match(/\baztec-(effect|global-inset)\S*/g) || []
+            ).join(" ")
+         })
+
+         if (useGlobalInset) imageEl.addClass(`aztec-global-inset-${rarity}`)
+         if (customData.iconEffect && customData.iconEffect !== "none") {
+            imageEl.addClass(`aztec-effect-${customData.iconEffect}-${rarity}`)
+         }
+      }
+   }
+
+   Hooks.on("item-piles-renderPileItem", applyItemPilesRarity)
+   Hooks.on("item-piles-renderMerchantItem", applyItemPilesRarity)
+
+   Hooks.on("renderVaultApp", (app, htmlData) => {
+      const targetNode = app.element
+         ? app.element[0]
+         : htmlData instanceof HTMLElement
+           ? htmlData
+           : htmlData[0]
+      if (!targetNode) return
+
+      const applyVaultRarities = () => {
+         const useGlobalInset = game.settings.get(
+            MODULE_ID,
+            SETTINGS.GLOBAL_INSET_SHADOW,
+         )
+
+         const actorId = app.actor?.id || app.options?.svelte?.props?.actor?._id
+         const actor = game.actors.get(actorId)
+         if (!actor) return
+
+         for (let gridItem of targetNode.querySelectorAll(".grid-item")) {
+            const itemName = gridItem.getAttribute("data-fast-tooltip")
+            if (!itemName) continue
+
+            if (gridItem.dataset.aztecProcessed === itemName) continue
+
+            const item = actor.items.find((i) => i.name === itemName)
+            if (!item) continue
+
+            const rarity = item.system?.traits?.rarity || "common"
+            const customData = allRarities[rarity]
+            if (!customData) continue
+
+            gridItem.className = gridItem.className
+               .replace(/\baztec-(effect|global-inset)\S*/g, "")
+               .trim()
+
+            if (useGlobalInset)
+               gridItem.classList.add(`aztec-global-inset-${rarity}`)
+            if (customData.iconEffect && customData.iconEffect !== "none") {
+               gridItem.classList.add(
+                  `aztec-effect-${customData.iconEffect}-${rarity}`,
+               )
+            }
+
+            gridItem.dataset.aztecProcessed = itemName
+         }
+      }
+
+      applyVaultRarities()
+   })
+
    Hooks.on("closeActorSheet", (app) => {
       if (app.actor?.type === "loot") app._aztecOpenSoundPlayed = false
    })
