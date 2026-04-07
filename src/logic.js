@@ -21,7 +21,14 @@ function getHighestRarity(actor, allRarities) {
    return highest
 }
 
-function updateLootBeams() {
+function getShadow(data) {
+   if (!data.hasShadow) return "none"
+   return data.shadowType === "sweetener"
+      ? `0px 0px 1px ${data.shadowColor}`
+      : `1px 1px 1px ${data.shadowColor}`
+}
+
+function updateLootBeams(isPan = false) {
    const lootEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_DROP_ENABLE)
    const beamsEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_BEAM_ENABLE)
 
@@ -38,6 +45,36 @@ function updateLootBeams() {
       $("body").append(container)
    }
 
+   // --- PERFORMANCE FIX: If just panning the camera, only update existing CSS coordinates! ---
+   if (isPan === true) {
+      container.children().each((_, el) => {
+         const tokenId = el.id.replace("aztec-beam-", "")
+         const token = canvas.tokens.get(tokenId)
+
+         if (token) {
+            const cx = token.x + token.w / 2
+            const cy = token.y + token.h / 2
+            let screenPos
+            if (typeof canvas.clientCoordinatesFromCanvas === "function") {
+               screenPos = canvas.clientCoordinatesFromCanvas({ x: cx, y: cy })
+            } else {
+               const transform = canvas.stage.transform.worldTransform
+               screenPos = {
+                  x: cx * transform.a + transform.tx,
+                  y: cy * transform.d + transform.ty,
+               }
+            }
+            $(el).css({
+               left: `${screenPos.x}px`,
+               top: `${screenPos.y}px`,
+               transform: `translate(-50%, -50%) scale(${canvas.stage.scale.x})`,
+            })
+         }
+      })
+      return
+   }
+
+   // --- FULL REBUILD: Runs on token creation, update, and deletion ---
    const existingBeams = new Set()
    const customs = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES) || {}
    const defaults =
@@ -246,10 +283,10 @@ export function injectRarities() {
       }
    }
 
-   Hooks.on("canvasPan", updateLootBeams)
-   Hooks.on("refreshToken", updateLootBeams)
-   Hooks.on("createToken", updateLootBeams)
-   Hooks.on("updateToken", updateLootBeams)
+   Hooks.on("canvasPan", () => updateLootBeams(true))
+   Hooks.on("refreshToken", () => updateLootBeams(false))
+   Hooks.on("createToken", () => updateLootBeams(false))
+   Hooks.on("updateToken", () => updateLootBeams(false))
 
    Hooks.on("deleteToken", (tokenDoc, options, userId) => {
       updateLootBeams()
@@ -434,11 +471,7 @@ export function injectRarities() {
       if (titleEl.length) {
          titleEl.css("color", customData.color)
          if (customData.hasShadow) {
-            const shadow =
-               customData.shadowType === "sweetener"
-                  ? `0px 0px 1px ${customData.shadowColor}`
-                  : `1px 1px 1px ${customData.shadowColor}`
-            titleEl.css("text-shadow", shadow)
+            titleEl.css("text-shadow", getShadow(customData))
          }
       }
 
@@ -567,11 +600,7 @@ export function injectRarities() {
             const titleEl = $(el).find(".name a")
             titleEl.css("color", customData.color)
             if (customData.hasShadow) {
-               const shadow =
-                  customData.shadowType === "sweetener"
-                     ? `0px 0px 1px ${customData.shadowColor}`
-                     : `1px 1px 1px ${customData.shadowColor}`
-               titleEl.css("text-shadow", shadow)
+               titleEl.css("text-shadow", getShadow(customData))
             }
          }
       })
@@ -588,11 +617,7 @@ export function injectRarities() {
             const imageEl = $(el).find(".item-image")
             titleEl.css("color", customData.color)
             if (customData.hasShadow) {
-               const shadow =
-                  customData.shadowType === "sweetener"
-                     ? `0px 0px 1px ${customData.shadowColor}`
-                     : `1px 1px 1px ${customData.shadowColor}`
-               titleEl.css("text-shadow", shadow)
+               titleEl.css("text-shadow", getShadow(customData))
             }
             if (useGlobalInset) imageEl.addClass(`aztec-global-inset-${rarity}`)
             if (customData.iconEffect && customData.iconEffect !== "none") {
@@ -626,11 +651,7 @@ export function injectRarities() {
 
          titleInput.css("color", customData.color)
          if (customData.hasShadow) {
-            const shadow =
-               customData.shadowType === "sweetener"
-                  ? `0px 0px 1px ${customData.shadowColor}`
-                  : `1px 1px 1px ${customData.shadowColor}`
-            titleInput.css("text-shadow", shadow)
+            titleEl.css("text-shadow", getShadow(customData))
          }
 
          if (
@@ -690,11 +711,7 @@ export function injectRarities() {
 
          titleEl.css("color", customData.color)
          if (customData.hasShadow) {
-            const shadow =
-               customData.shadowType === "sweetener"
-                  ? `0px 0px 1px ${customData.shadowColor}`
-                  : `1px 1px 1px ${customData.shadowColor}`
-            titleEl.css("text-shadow", shadow)
+            titleEl.css("text-shadow", getShadow(customData))
          }
 
          if (
