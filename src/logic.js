@@ -1,6 +1,13 @@
 import { MODULE_ID, SETTINGS, PHYSICAL_ITEM_TYPES } from "./constants.js"
 import { injectDynamicStyles } from "./styles.js"
 
+function getShadow(data) {
+   if (!data.hasShadow) return "none"
+   return data.shadowType === "sweetener"
+      ? `0px 0px 1px ${data.shadowColor}`
+      : `1px 1px 1px ${data.shadowColor}`
+}
+
 function getHighestRarity(actor, allRarities) {
    if (!actor || !actor.items) return null
    const items = actor.items.filter((i) => PHYSICAL_ITEM_TYPES.includes(i.type))
@@ -21,14 +28,7 @@ function getHighestRarity(actor, allRarities) {
    return highest
 }
 
-function getShadow(data) {
-   if (!data.hasShadow) return "none"
-   return data.shadowType === "sweetener"
-      ? `0px 0px 1px ${data.shadowColor}`
-      : `1px 1px 1px ${data.shadowColor}`
-}
-
-function updateLootBeams(isPan = false) {
+function updateLootBeams() {
    const lootEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_DROP_ENABLE)
    const beamsEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_BEAM_ENABLE)
 
@@ -45,36 +45,6 @@ function updateLootBeams(isPan = false) {
       $("body").append(container)
    }
 
-   // --- PERFORMANCE FIX: If just panning the camera, only update existing CSS coordinates! ---
-   if (isPan === true) {
-      container.children().each((_, el) => {
-         const tokenId = el.id.replace("aztec-beam-", "")
-         const token = canvas.tokens.get(tokenId)
-
-         if (token) {
-            const cx = token.x + token.w / 2
-            const cy = token.y + token.h / 2
-            let screenPos
-            if (typeof canvas.clientCoordinatesFromCanvas === "function") {
-               screenPos = canvas.clientCoordinatesFromCanvas({ x: cx, y: cy })
-            } else {
-               const transform = canvas.stage.transform.worldTransform
-               screenPos = {
-                  x: cx * transform.a + transform.tx,
-                  y: cy * transform.d + transform.ty,
-               }
-            }
-            $(el).css({
-               left: `${screenPos.x}px`,
-               top: `${screenPos.y}px`,
-               transform: `translate(-50%, -50%) scale(${canvas.stage.scale.x})`,
-            })
-         }
-      })
-      return
-   }
-
-   // --- FULL REBUILD: Runs on token creation, update, and deletion ---
    const existingBeams = new Set()
    const customs = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES) || {}
    const defaults =
@@ -246,7 +216,7 @@ async function dropLootForActor(actor) {
       actorLink: true,
       x: dropX,
       y: dropY,
-      hidden: false,
+      hidden: npcToken.hidden || npcToken.document?.hidden || false,
       flags: { [MODULE_ID]: { isDropLoot: true } },
    }
 
@@ -283,10 +253,10 @@ export function injectRarities() {
       }
    }
 
-   Hooks.on("canvasPan", () => updateLootBeams(true))
-   Hooks.on("refreshToken", () => updateLootBeams(false))
-   Hooks.on("createToken", () => updateLootBeams(false))
-   Hooks.on("updateToken", () => updateLootBeams(false))
+   Hooks.on("canvasPan", updateLootBeams)
+   Hooks.on("refreshToken", updateLootBeams)
+   Hooks.on("createToken", updateLootBeams)
+   Hooks.on("updateToken", updateLootBeams)
 
    Hooks.on("deleteToken", (tokenDoc, options, userId) => {
       updateLootBeams()
@@ -470,9 +440,7 @@ export function injectRarities() {
 
       if (titleEl.length) {
          titleEl.css("color", customData.color)
-         if (customData.hasShadow) {
-            titleEl.css("text-shadow", getShadow(customData))
-         }
+         titleEl.css("text-shadow", getShadow(customData))
       }
 
       if (imageEl.length) {
@@ -505,46 +473,42 @@ export function injectRarities() {
            : htmlData[0]
       if (!targetNode) return
 
-      const applyVaultRarities = () => {
-         const useGlobalInset = game.settings.get(
-            MODULE_ID,
-            SETTINGS.GLOBAL_INSET_SHADOW,
-         )
+      const useGlobalInset = game.settings.get(
+         MODULE_ID,
+         SETTINGS.GLOBAL_INSET_SHADOW,
+      )
 
-         const actorId = app.actor?.id || app.options?.svelte?.props?.actor?._id
-         const actor = game.actors.get(actorId)
-         if (!actor) return
+      const actorId = app.actor?.id || app.options?.svelte?.props?.actor?._id
+      const actor = game.actors.get(actorId)
+      if (!actor) return
 
-         for (let gridItem of targetNode.querySelectorAll(".grid-item")) {
-            const itemName = gridItem.getAttribute("data-fast-tooltip")
-            if (!itemName) continue
+      for (let gridItem of targetNode.querySelectorAll(".grid-item")) {
+         const itemName = gridItem.getAttribute("data-fast-tooltip")
+         if (!itemName) continue
 
-            if (gridItem.dataset.aztecProcessed === itemName) continue
+         if (gridItem.dataset.aztecProcessed === itemName) continue
 
-            const item = actor.items.find((i) => i.name === itemName)
-            if (!item) continue
+         const item = actor.items.find((i) => i.name === itemName)
+         if (!item) continue
 
-            const rarity = item.system?.traits?.rarity || "common"
-            const customData = allRarities[rarity]
-            if (!customData) continue
+         const rarity = item.system?.traits?.rarity || "common"
+         const customData = allRarities[rarity]
+         if (!customData) continue
 
-            gridItem.className = gridItem.className
-               .replace(/\baztec-(effect|global-inset)\S*/g, "")
-               .trim()
+         gridItem.className = gridItem.className
+            .replace(/\baztec-(effect|global-inset)\S*/g, "")
+            .trim()
 
-            if (useGlobalInset)
-               gridItem.classList.add(`aztec-global-inset-${rarity}`)
-            if (customData.iconEffect && customData.iconEffect !== "none") {
-               gridItem.classList.add(
-                  `aztec-effect-${customData.iconEffect}-${rarity}`,
-               )
-            }
-
-            gridItem.dataset.aztecProcessed = itemName
+         if (useGlobalInset)
+            gridItem.classList.add(`aztec-global-inset-${rarity}`)
+         if (customData.iconEffect && customData.iconEffect !== "none") {
+            gridItem.classList.add(
+               `aztec-effect-${customData.iconEffect}-${rarity}`,
+            )
          }
-      }
 
-      applyVaultRarities()
+         gridItem.dataset.aztecProcessed = itemName
+      }
    })
 
    Hooks.on("closeActorSheet", (app) => {
@@ -599,9 +563,7 @@ export function injectRarities() {
             const customData = allRarities[rarity]
             const titleEl = $(el).find(".name a")
             titleEl.css("color", customData.color)
-            if (customData.hasShadow) {
-               titleEl.css("text-shadow", getShadow(customData))
-            }
+            titleEl.css("text-shadow", getShadow(customData))
          }
       })
 
@@ -615,10 +577,10 @@ export function injectRarities() {
             const customData = allRarities[rarity]
             const titleEl = $(el).find(".item-name h4")
             const imageEl = $(el).find(".item-image")
+
             titleEl.css("color", customData.color)
-            if (customData.hasShadow) {
-               titleEl.css("text-shadow", getShadow(customData))
-            }
+            titleEl.css("text-shadow", getShadow(customData))
+
             if (useGlobalInset) imageEl.addClass(`aztec-global-inset-${rarity}`)
             if (customData.iconEffect && customData.iconEffect !== "none") {
                imageEl.addClass(
@@ -650,9 +612,7 @@ export function injectRarities() {
          const titleInput = html.find('input[name="name"]')
 
          titleInput.css("color", customData.color)
-         if (customData.hasShadow) {
-            titleEl.css("text-shadow", getShadow(customData))
-         }
+         titleInput.css("text-shadow", getShadow(customData))
 
          if (
             (customData.iconEffect && customData.iconEffect !== "none") ||
@@ -710,9 +670,7 @@ export function injectRarities() {
          )
 
          titleEl.css("color", customData.color)
-         if (customData.hasShadow) {
-            titleEl.css("text-shadow", getShadow(customData))
-         }
+         titleEl.css("text-shadow", getShadow(customData))
 
          if (
             (customData.iconEffect && customData.iconEffect !== "none") ||

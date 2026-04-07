@@ -116,12 +116,21 @@ export class CustomRaritiesMenu extends FormApplication {
 
       html.on("click", ".add-rarity", async (e) => {
          e.preventDefault()
+         document.activeElement?.blur()
+
          const newKey = foundry.utils.randomID()
          const newOrder = html.find(".rarity-item").length
 
+         const effectOptions = {
+            none: "AZTEC.UI.EffectNone",
+            glow: "AZTEC.UI.EffectGlow",
+            shimmer: "AZTEC.UI.EffectShimmer",
+            pulse: "AZTEC.UI.EffectPulse",
+         }
+
          const newRowHTML = await renderTemplate(
             `modules/${MODULE_ID}/templates/new-rarity-row.hbs`,
-            { newKey, order: newOrder },
+            { newKey, order: newOrder, effectOptions }, // Pass it here!
          )
          const appended = $(newRowHTML).appendTo(html.find(".unified-list"))
 
