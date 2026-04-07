@@ -14,7 +14,7 @@
       }
    ],
    "esmodules": ["src/main.js"],
-   "styles": ["styles.css"],
+   "styles": ["styles/styles.css"],
    "languages": [
       {
          "lang": "en",
