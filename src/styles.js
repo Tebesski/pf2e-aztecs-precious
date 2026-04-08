@@ -28,33 +28,38 @@ export function injectDynamicStyles(allRarities) {
    }
    cssString += "}\n\n"
 
-   cssString += `color-picker::part(input) { color: #ffffff !important; }\n`
+   cssString += `
+   #aztecs-precious-menu select option,
+   #preview-shadow-type option {
+      color: #ffffff !important;
+      background-color: #222222 !important;
+   }
+   color-picker::part(input) { color: #ffffff !important; }
+   color-picker input { color: #ffffff !important; }
+   \n`
 
    cssString += `
    @keyframes aztec-shimmer-anim {
       0% { background-position: 200% 0; }
       35% { background-position: -200% 0; }
       100% { background-position: -200% 0; }
+   }
+   
+   @keyframes aztec-pulse-generic {
+      0% { box-shadow: 0px 0px 15px 3px var(--aztec-pulse-color1); }
+      50% { box-shadow: 0px 0px 15px 3px var(--aztec-pulse-color2); }
+      100% { box-shadow: 0px 0px 15px 3px var(--aztec-pulse-color1); }
    }\n`
 
    cssString += `
    .aztec-loot-beam-container {
-      position: absolute;
-      pointer-events: none;
-      z-index: 15;
-      width: 300px;
-      height: 300px;
-      opacity: 0.8;
-      transform-origin: center center;
+      position: absolute; pointer-events: none; z-index: 15;
+      width: 300px; height: 300px; opacity: 0.8; transform-origin: center center;
    }
-
    .aztec-loot-beam-spin {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
+      width: 100%; height: 100%; border-radius: 50%;
       animation: aztec-spin-beam 15s linear infinite;
    }
-
    @keyframes aztec-spin-beam {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -109,12 +114,12 @@ export function injectDynamicStyles(allRarities) {
 
         .aztec-effect-glow-${key} { box-shadow: 0 0 15px 3px ${glowColor} !important; overflow: visible !important; }
         
-        @keyframes aztec-pulse-${key} {
-            0% { box-shadow: 0px 0px 15px 3px ${data.color}; }
-            50% { box-shadow: 0px 0px 15px 3px ${data.shadowColor || data.color}; }
-            100% { box-shadow: 0px 0px 15px 3px ${data.color}; }
+        .aztec-effect-pulse-${key} { 
+            --aztec-pulse-color1: ${data.color};
+            --aztec-pulse-color2: ${data.shadowColor || data.color};
+            animation: aztec-pulse-generic 1.5s infinite ease-in-out !important; 
+            overflow: visible !important; 
         }
-        .aztec-effect-pulse-${key} { animation: aztec-pulse-${key} 1.5s infinite ease-in-out !important; overflow: visible !important; }
 
         .tag.rarity.${key}, .tag.rarity[data-value="${key}"], .tag.rarity[value="${key}"], 
         select.tag.rarity.${key}, select.tag.rarity[data-value="${key}"], select.tag.rarity option[value="${key}"],

@@ -10,12 +10,13 @@ function getShadow(data) {
 
 function getHighestRarity(actor, allRarities) {
    if (!actor || !actor.items) return null
-   const items = actor.items.filter((i) => PHYSICAL_ITEM_TYPES.includes(i.type))
 
    let highest = null
    let highestOrder = Infinity
 
-   for (const item of items) {
+   for (const item of actor.items) {
+      if (!PHYSICAL_ITEM_TYPES.includes(item.type)) continue
+
       const rarity = item.system?.traits?.rarity || "common"
       const data = allRarities[rarity]
       if (data && data.order !== undefined) {
@@ -28,83 +29,132 @@ function getHighestRarity(actor, allRarities) {
    return highest
 }
 
-function updateLootBeams() {
+// --- PIXI BEAM GENERATOR ---
+const beamTextures = {}
+
+const activeBeams = new Set()
+let globalTickerAdded = false
+
+const globalBeamTicker = () => {
+   activeBeams.forEach((sprite) => {
+      if (!sprite.destroyed) sprite.rotation += 0.005
+   })
+}
+
+function getBeamTexture(colorHex) {
+   if (beamTextures[colorHex]) return beamTextures[colorHex]
+
+   const size = 400
+   const canvas = document.createElement("canvas")
+   canvas.width = size
+   canvas.height = size
+   const ctx = canvas.getContext("2d")
+
+   const cx = size / 2,
+      cy = size / 2,
+      r = size / 2
+
+   ctx.fillStyle = colorHex
+   const angle = Math.PI / 12
+   for (let i = 0; i < 24; i += 2) {
+      ctx.beginPath()
+      ctx.moveTo(cx, cy)
+      ctx.arc(cx, cy, r, i * angle, (i + 1) * angle)
+      ctx.lineTo(cx, cy)
+      ctx.fill()
+   }
+
+   ctx.globalCompositeOperation = "destination-in"
+   const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+   rg.addColorStop(0, "rgba(0,0,0,0)")
+   rg.addColorStop(0.18, "rgba(0,0,0,0)")
+   rg.addColorStop(0.32, "rgba(0,0,0,0.8)")
+   rg.addColorStop(0.65, "rgba(0,0,0,0)")
+   rg.addColorStop(1, "rgba(0,0,0,0)")
+
+   ctx.fillStyle = rg
+   ctx.fillRect(0, 0, size, size)
+
+   const texture = PIXI.Texture.from(canvas)
+   texture.baseTexture.update()
+
+   beamTextures[colorHex] = texture
+   return texture
+}
+
+function refreshPixiBeamForToken(token) {
+   if (!token || !token.document) return
+
    const lootEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_DROP_ENABLE)
    const beamsEnabled = game.settings.get(MODULE_ID, SETTINGS.LOOT_BEAM_ENABLE)
+   const isDropLoot =
+      token.document.getFlag(MODULE_ID, "isDropLoot") ||
+      (token.actor && token.actor.getFlag(MODULE_ID, "isDropLoot"))
 
-   if (!lootEnabled || !beamsEnabled || !canvas?.ready || !canvas?.stage) {
-      $("#aztec-beam-container").remove()
+   if (!lootEnabled || !beamsEnabled || !isDropLoot || !token.actor) {
+      removePixiBeam(token)
       return
    }
 
-   let container = $("#aztec-beam-container")
-   if (container.length === 0) {
-      container = $(
-         '<div id="aztec-beam-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: hidden;"></div>',
-      )
-      $("body").append(container)
-   }
-
-   const existingBeams = new Set()
+   // Optional future optimization: cache this combined object and only update it when settings change
    const customs = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES) || {}
    const defaults =
       game.settings.get(MODULE_ID, SETTINGS.DEFAULT_RARITIES) || {}
    const allRarities = { ...defaults, ...customs }
 
-   for (const token of canvas.tokens.placeables) {
-      if (
-         token.document.getFlag(MODULE_ID, "isDropLoot") ||
-         (token.actor && token.actor.getFlag(MODULE_ID, "isDropLoot"))
-      ) {
-         const highest = getHighestRarity(token.actor, allRarities)
+   const highest = getHighestRarity(token.actor, allRarities)
 
-         if (highest && highest.data.useBeam) {
-            const beamId = `aztec-beam-${token.id}`
-            existingBeams.add(beamId)
-
-            let beam = $(`#${beamId}`)
-            if (beam.length === 0) {
-               beam = $(`
-                  <div id="${beamId}" class="aztec-loot-beam-container">
-                     <div class="aztec-loot-beam-spin aztec-loot-beam-${highest.key}"></div>
-                  </div>
-               `)
-               container.append(beam)
-            } else {
-               beam
-                  .find(".aztec-loot-beam-spin")
-                  .attr(
-                     "class",
-                     `aztec-loot-beam-spin aztec-loot-beam-${highest.key}`,
-                  )
-            }
-
-            const cx = token.x + token.w / 2
-            const cy = token.y + token.h / 2
-
-            let screenPos
-            if (typeof canvas.clientCoordinatesFromCanvas === "function") {
-               screenPos = canvas.clientCoordinatesFromCanvas({ x: cx, y: cy })
-            } else {
-               const transform = canvas.stage.transform.worldTransform
-               screenPos = {
-                  x: cx * transform.a + transform.tx,
-                  y: cy * transform.d + transform.ty,
-               }
-            }
-
-            beam.css({
-               left: `${screenPos.x}px`,
-               top: `${screenPos.y}px`,
-               transform: `translate(-50%, -50%) scale(${canvas.stage.scale.x})`,
-            })
-         }
-      }
+   if (!highest || !highest.data.useBeam) {
+      removePixiBeam(token)
+      return
    }
 
-   container.children().each((_, el) => {
-      if (!existingBeams.has(el.id)) $(el).remove()
-   })
+   const color = highest.data.beamColor || highest.data.color
+
+   if (!token._aztecBeam || token._aztecBeam.destroyed) {
+      const texture = getBeamTexture(color)
+      const sprite = new PIXI.Sprite(texture)
+
+      sprite.anchor.set(0.5)
+      sprite.zIndex = -1
+      token.sortableChildren = true
+
+      token.addChild(sprite)
+
+      if (!globalTickerAdded && canvas.app?.ticker) {
+         canvas.app.ticker.add(globalBeamTicker)
+         globalTickerAdded = true
+      }
+      activeBeams.add(sprite)
+
+      token._aztecBeam = sprite
+      token._aztecBeamColor = color
+   } else if (token._aztecBeamColor !== color) {
+      token._aztecBeam.texture = getBeamTexture(color)
+      token._aztecBeamColor = color
+   }
+
+   token._aztecBeam.x = token.w / 2
+   token._aztecBeam.y = token.h / 2
+
+   const scaleMultiplier = Math.max(token.w, token.h) / 130
+   token._aztecBeam.scale.set(scaleMultiplier)
+}
+
+function removePixiBeam(token) {
+   if (token._aztecBeam) {
+      activeBeams.delete(token._aztecBeam) // Remove from global tracker
+      if (!token._aztecBeam.destroyed) token._aztecBeam.destroy()
+      token._aztecBeam = null
+      token._aztecBeamColor = null
+   }
+}
+
+function updateAllPixiBeams() {
+   if (!canvas?.ready) return
+   for (const token of canvas.tokens.placeables) {
+      refreshPixiBeamForToken(token)
+   }
 }
 
 async function checkAndDeleteEmptyLoot(actor) {
@@ -114,31 +164,25 @@ async function checkAndDeleteEmptyLoot(actor) {
    )
       return
 
-   const remainingLoot = actor.items.filter((i) => {
-      if (!PHYSICAL_ITEM_TYPES.includes(i.type)) return false
-      if (i.system?.quantity === 0) return false
-      return true
-   })
+   const currentActor = game.actors.get(actor.id)
+   if (!currentActor) return
 
-   if (remainingLoot.length === 0) {
-      setTimeout(async () => {
-         const currentActor = game.actors.get(actor.id)
-         if (!currentActor) return
+   let hasLoot = false
+   for (const i of currentActor.items) {
+      if (PHYSICAL_ITEM_TYPES.includes(i.type) && i.system?.quantity !== 0) {
+         hasLoot = true
+         break
+      }
+   }
 
-         const currentLoot = currentActor.items.filter(
-            (i) =>
-               PHYSICAL_ITEM_TYPES.includes(i.type) && i.system?.quantity !== 0,
-         )
-         if (currentLoot.length === 0) {
-            const activeTokens = currentActor.getActiveTokens()
-            const tokenIds = activeTokens.map((t) => t.id)
-            if (tokenIds.length > 0 && canvas.scene) {
-               await canvas.scene.deleteEmbeddedDocuments("Token", tokenIds)
-            }
-            await currentActor.delete()
-            updateLootBeams()
-         }
-      }, 500)
+   if (!hasLoot) {
+      const activeTokens = currentActor.getActiveTokens()
+      const tokenIds = activeTokens.map((t) => t.id)
+      if (tokenIds.length > 0 && canvas.scene) {
+         await canvas.scene.deleteEmbeddedDocuments("Token", tokenIds)
+      }
+      await currentActor.delete()
+      updateAllPixiBeams()
    }
 }
 
@@ -253,13 +297,11 @@ export function injectRarities() {
       }
    }
 
-   Hooks.on("canvasPan", updateLootBeams)
-   Hooks.on("refreshToken", updateLootBeams)
-   Hooks.on("createToken", updateLootBeams)
-   Hooks.on("updateToken", updateLootBeams)
+   Hooks.on("canvasReady", updateAllPixiBeams)
+   Hooks.on("drawToken", refreshPixiBeamForToken)
+   Hooks.on("refreshToken", refreshPixiBeamForToken)
 
    Hooks.on("deleteToken", (tokenDoc, options, userId) => {
-      updateLootBeams()
       if (!game.user.isGM || game.user.id !== game.users.activeGM?.id) return
 
       if (tokenDoc.getFlag(MODULE_ID, "isDropLoot")) {
@@ -310,7 +352,7 @@ export function injectRarities() {
          actor.getFlag(MODULE_ID, "isDropLoot") &&
          lootEnabled
       ) {
-         updateLootBeams()
+         updateAllPixiBeams()
 
          const highest = getHighestRarity(actor, allRarities)
          let soundToPlay = game.settings.get(
@@ -367,7 +409,7 @@ export function injectRarities() {
          }
       }
 
-      if (item.parent && item.parent.type === "loot") updateLootBeams()
+      if (item.parent && item.parent.type === "loot") updateAllPixiBeams()
    })
 
    Hooks.on("deleteItem", async (item, options, userId) => {
@@ -391,7 +433,7 @@ export function injectRarities() {
          }
       }
 
-      if (item.parent && item.parent.type === "loot") updateLootBeams()
+      if (item.parent && item.parent.type === "loot") updateAllPixiBeams()
    })
 
    const applyItemPilesRarity = (...args) => {
@@ -473,42 +515,44 @@ export function injectRarities() {
            : htmlData[0]
       if (!targetNode) return
 
-      const useGlobalInset = game.settings.get(
-         MODULE_ID,
-         SETTINGS.GLOBAL_INSET_SHADOW,
-      )
+      setTimeout(() => {
+         const useGlobalInset = game.settings.get(
+            MODULE_ID,
+            SETTINGS.GLOBAL_INSET_SHADOW,
+         )
 
-      const actorId = app.actor?.id || app.options?.svelte?.props?.actor?._id
-      const actor = game.actors.get(actorId)
-      if (!actor) return
+         const actorId = app.actor?.id || app.options?.svelte?.props?.actor?._id
+         const actor = game.actors.get(actorId)
+         if (!actor) return
 
-      for (let gridItem of targetNode.querySelectorAll(".grid-item")) {
-         const itemName = gridItem.getAttribute("data-fast-tooltip")
-         if (!itemName) continue
+         for (let gridItem of targetNode.querySelectorAll(".grid-item")) {
+            const itemName = gridItem.getAttribute("data-fast-tooltip")
+            if (!itemName) continue
 
-         if (gridItem.dataset.aztecProcessed === itemName) continue
+            if (gridItem.dataset.aztecProcessed === itemName) continue
 
-         const item = actor.items.find((i) => i.name === itemName)
-         if (!item) continue
+            const item = actor.items.find((i) => i.name === itemName)
+            if (!item) continue
 
-         const rarity = item.system?.traits?.rarity || "common"
-         const customData = allRarities[rarity]
-         if (!customData) continue
+            const rarity = item.system?.traits?.rarity || "common"
+            const customData = allRarities[rarity]
+            if (!customData) continue
 
-         gridItem.className = gridItem.className
-            .replace(/\baztec-(effect|global-inset)\S*/g, "")
-            .trim()
+            gridItem.className = gridItem.className
+               .replace(/\baztec-(effect|global-inset)\S*/g, "")
+               .trim()
 
-         if (useGlobalInset)
-            gridItem.classList.add(`aztec-global-inset-${rarity}`)
-         if (customData.iconEffect && customData.iconEffect !== "none") {
-            gridItem.classList.add(
-               `aztec-effect-${customData.iconEffect}-${rarity}`,
-            )
+            if (useGlobalInset)
+               gridItem.classList.add(`aztec-global-inset-${rarity}`)
+            if (customData.iconEffect && customData.iconEffect !== "none") {
+               gridItem.classList.add(
+                  `aztec-effect-${customData.iconEffect}-${rarity}`,
+               )
+            }
+
+            gridItem.dataset.aztecProcessed = itemName
          }
-
-         gridItem.dataset.aztecProcessed = itemName
-      }
+      }, 50)
    })
 
    Hooks.on("closeActorSheet", (app) => {
