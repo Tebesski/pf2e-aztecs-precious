@@ -502,6 +502,15 @@ export function injectRarities() {
             imageEl.addClass(`aztec-effect-${customData.iconEffect}-${rarity}`)
          }
       }
+
+      $el.find("span").each((_, span) => {
+         const $span = $(span)
+         if ($span.text().trim().toLowerCase() === rarity.toLowerCase()) {
+            $span.text(customData.label) // Replace with "Well-Made"
+            $span.css("color", customData.color) // Colorize it!
+            $span.css("text-shadow", getShadow(customData))
+         }
+      })
    }
 
    Hooks.on("item-piles-renderPileItem", applyItemPilesRarity)
