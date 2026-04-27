@@ -297,6 +297,37 @@ export function injectRarities() {
       }
    }
 
+   const systemDataModels = [CONFIG.Item.dataModels, CONFIG.Actor.dataModels]
+   for (const models of systemDataModels) {
+      if (!models) continue
+      for (const model of Object.values(models)) {
+         const rarityField = foundry.utils.getProperty(
+            model,
+            "schema.fields.traits.fields.rarity",
+         )
+
+         if (rarityField && rarityField.choices) {
+            if (rarityField.choices instanceof Set) {
+               for (const key of Object.keys(allRarities)) {
+                  rarityField.choices.add(key)
+               }
+            } else if (Array.isArray(rarityField.choices)) {
+               const newChoices = [...rarityField.choices]
+               for (const key of Object.keys(allRarities)) {
+                  if (!newChoices.includes(key)) newChoices.push(key)
+               }
+               rarityField.choices = newChoices
+            } else if (typeof rarityField.choices === "object") {
+               const newChoices = { ...rarityField.choices }
+               for (const [key, data] of Object.entries(allRarities)) {
+                  newChoices[key] = data.label
+               }
+               rarityField.choices = newChoices
+            }
+         }
+      }
+   }
+
    Hooks.on("canvasReady", updateAllPixiBeams)
    Hooks.on("drawToken", refreshPixiBeamForToken)
    Hooks.on("refreshToken", refreshPixiBeamForToken)
