@@ -417,14 +417,17 @@ export function injectRarities() {
          SETTINGS.PLAY_SOUND_INVENTORY,
       )
       if (playInventorySound && actor.type !== "loot") {
-         if (userId !== game.user.id) return
+         if (!actor.isOwner) return
+         if (game.user.isGM && actor.hasPlayerOwner) return
+
          const rarity = item.system?.traits?.rarity || "common"
          const soundPath = allRarities[rarity]?.sound
-         if (soundPath)
+         if (soundPath) {
             AudioHelper.play(
                { src: soundPath, volume: 0.8, autoplay: true },
                false,
             )
+         }
       }
    })
 
