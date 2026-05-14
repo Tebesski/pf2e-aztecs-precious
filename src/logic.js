@@ -96,7 +96,6 @@ function refreshPixiBeamForToken(token) {
       return
    }
 
-   // Optional future optimization: cache this combined object and only update it when settings change
    const customs = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES) || {}
    const defaults =
       game.settings.get(MODULE_ID, SETTINGS.DEFAULT_RARITIES) || {}
@@ -143,7 +142,7 @@ function refreshPixiBeamForToken(token) {
 
 function removePixiBeam(token) {
    if (token._aztecBeam) {
-      activeBeams.delete(token._aztecBeam) // Remove from global tracker
+      activeBeams.delete(token._aztecBeam)
       if (!token._aztecBeam.destroyed) token._aztecBeam.destroy()
       token._aztecBeam = null
       token._aztecBeamColor = null
@@ -193,6 +192,13 @@ async function dropLootForActor(actor) {
    const dropPCs = game.settings.get(MODULE_ID, SETTINGS.LOOT_DROP_PCS_ENABLE)
    if (actor.type === "character" && !dropPCs) return
    if (actor.type !== "npc" && actor.type !== "character") return
+
+   const preventPlayerOwnedNPCs = game.settings.get(
+      MODULE_ID,
+      SETTINGS.LOOT_DROP_NPC_PLAYER_OWNED,
+   )
+   if (actor.type === "npc" && preventPlayerOwnedNPCs && actor.hasPlayerOwner)
+      return
 
    if (actor.getFlag(MODULE_ID, "lootDropped")) return
 
@@ -403,7 +409,7 @@ export function injectRarities() {
             const now = Date.now()
             if (now - lastDropSoundTime > 1000) {
                lastDropSoundTime = now
-               AudioHelper.play(
+               foundry.audio.AudioHelper.play(
                   { src: soundToPlay, volume: 0.8, autoplay: true },
                   false,
                )
@@ -423,7 +429,7 @@ export function injectRarities() {
          const rarity = item.system?.traits?.rarity || "common"
          const soundPath = allRarities[rarity]?.sound
          if (soundPath) {
-            AudioHelper.play(
+            foundry.audio.AudioHelper.play(
                { src: soundPath, volume: 0.8, autoplay: true },
                false,
             )
@@ -540,8 +546,8 @@ export function injectRarities() {
       $el.find("span").each((_, span) => {
          const $span = $(span)
          if ($span.text().trim().toLowerCase() === rarity.toLowerCase()) {
-            $span.text(customData.label) // Replace with "Well-Made"
-            $span.css("color", customData.color) // Colorize it!
+            $span.text(customData.label)
+            $span.css("color", customData.color)
             $span.css("text-shadow", getShadow(customData))
          }
       })
@@ -625,11 +631,12 @@ export function injectRarities() {
                MODULE_ID,
                SETTINGS.LOOT_DEFAULT_OPEN_SOUND,
             )
-            if (openSound)
-               AudioHelper.play(
+            if (openSound) {
+               foundry.audio.AudioHelper.play(
                   { src: openSound, volume: 0.8, autoplay: true },
                   false,
                )
+            }
          }
       }
 

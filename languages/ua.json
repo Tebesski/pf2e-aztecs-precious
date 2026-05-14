@@ -54,7 +54,9 @@
          "DefaultNameName": "Стандартна назва токена здобичі",
          "DefaultNameHint": "Назва, яка дається токену здобичі на мапі.",
          "DefaultDropSoundName": "Стандартний звук випадіння здобичі",
-         "DefaultOpenSoundName": "Стандартний звук відкриття здобичі"
+         "DefaultOpenSoundName": "Стандартний звук відкриття здобичі",
+         "DropNpcPlayerOwnedName": "Вимкнути випадіння здобичі для NPC гравців",
+         "DropNpcPlayerOwnedHint": "Якщо увімкнено, з NPC, що належать гравцю, не випадатиме здобич після смерті."
       }
    }
 }

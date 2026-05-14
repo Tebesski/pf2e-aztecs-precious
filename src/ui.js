@@ -1,26 +1,41 @@
 import { MODULE_ID, SETTINGS } from "./constants.js"
 
-export class CustomRaritiesMenu extends FormApplication {
-   static get defaultOptions() {
-      return foundry.utils.mergeObject(super.defaultOptions, {
-         id: "aztecs-precious-menu",
-         title: game.i18n.localize("AZTEC.UI.ManagerTitle"),
-         template: `modules/${MODULE_ID}/templates/rarity-settings.hbs`,
-         width: 700,
-         height: "auto",
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
+
+export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
+   ApplicationV2,
+) {
+   static DEFAULT_OPTIONS = {
+      id: "aztecs-precious-menu",
+      window: {
+         title: "AZTEC.UI.ManagerTitle",
+         resizable: true,
+         contentTag: "form",
+         contentClasses: ["standard-form", "scrollable"],
+      },
+      position: { width: 700, height: 750 },
+      form: {
+         handler: CustomRaritiesMenu.prototype._updateObject,
+         submitOnChange: false,
          closeOnSubmit: false,
-      })
+      },
    }
 
-   async _render(force, options) {
-      if (!game.user.isGM)
-         return ui.notifications.error(
+   static PARTS = {
+      main: { template: `modules/${MODULE_ID}/templates/rarity-settings.hbs` },
+   }
+
+   _canRender(options) {
+      if (!game.user.isGM) {
+         ui.notifications.error(
             "Aztec's Precious | Only Game Masters can access the Rarity Manager.",
          )
-      return super._render(force, options)
+         return false
+      }
+      return super._canRender(options)
    }
 
-   getData() {
+   async _prepareContext(options) {
       const defaults =
          game.settings.get(MODULE_ID, SETTINGS.DEFAULT_RARITIES) || {}
       const customs =
@@ -49,8 +64,9 @@ export class CustomRaritiesMenu extends FormApplication {
       }
    }
 
-   activateListeners(html) {
-      super.activateListeners(html)
+   _onRender(context, options) {
+      super._onRender(context, options)
+      const html = $(this.element)
 
       let draggedItem = null
 
@@ -128,14 +144,14 @@ export class CustomRaritiesMenu extends FormApplication {
             pulse: "AZTEC.UI.EffectPulse",
          }
 
-         const newRowHTML = await renderTemplate(
-            `modules/${MODULE_ID}/templates/new-rarity-row.hbs`,
-            { newKey, order: newOrder, effectOptions }, // Pass it here!
-         )
+         const newRowHTML =
+            await foundry.applications.handlebars.renderTemplate(
+               `modules/${MODULE_ID}/templates/new-rarity-row.hbs`,
+               { newKey, order: newOrder, effectOptions },
+            )
          const appended = $(newRowHTML).appendTo(html.find(".unified-list"))
 
          this.#updateRowPreview(appended)
-         this.setPosition({ height: "auto" })
       })
 
       html.on("click", ".delete-rarity", async (e) => {
@@ -146,12 +162,10 @@ export class CustomRaritiesMenu extends FormApplication {
                .find(`.rarity-item[data-key="${key}"] input[name*=".label"]`)
                .val() || "this rarity"
 
-         const confirmed = await Dialog.confirm({
-            title: "Delete Rarity",
+         const confirmed = await foundry.applications.api.DialogV2.confirm({
+            window: { title: "Delete Rarity" },
             content: `<p>Are you sure you want to delete <strong>${labelInput}</strong>?</p>`,
-            yes: () => true,
-            no: () => false,
-            defaultYes: false,
+            rejectClose: false,
          })
 
          if (confirmed) {
@@ -159,7 +173,6 @@ export class CustomRaritiesMenu extends FormApplication {
             html.find(".rarity-item").each((index, el) => {
                $(el).find(".sort-order").val(index)
             })
-            this.setPosition({ height: "auto" })
          }
       })
 
@@ -260,7 +273,7 @@ export class CustomRaritiesMenu extends FormApplication {
       const previewWrapper = row.find(".aztec-icon-wrapper")
 
       labelInput.css("color", color)
-      labelInput.css("background", "transparent")
+      labelInput.css("background", "#f9f9f9")
       previewText.css("color", color)
 
       if (hasShadow) {
@@ -312,46 +325,48 @@ export class CustomRaritiesMenu extends FormApplication {
          isSweetener: currentType === "sweetener",
          isEpic: currentType === "epic",
       }
-      const contentHTML = await renderTemplate(
+      const contentHTML = await foundry.applications.handlebars.renderTemplate(
          `modules/${MODULE_ID}/templates/shadow-dialog.hbs`,
          templateData,
       )
 
       let isSaved = false
 
-      new Dialog({
-         title: `Shadow Settings: ${label}`,
+      await foundry.applications.api.DialogV2.wait({
+         window: { title: `Shadow Settings: ${label}` },
          content: contentHTML,
-         render: (dlgHtml) => {
+         render: (event) => {
+            const appElement = $(event.target.element)
             const updatePreview = () => {
-               const sType = dlgHtml.find("#preview-shadow-type").val()
-               const sColor = dlgHtml.find("#preview-shadow-color").val()
+               const sType = appElement.find("#preview-shadow-type").val()
+               const sColor = appElement.find("#preview-shadow-color").val()
                const cssShadow =
                   sType === "sweetener"
                      ? `0px 0px 1px ${sColor}`
                      : `1px 1px 1px ${sColor}`
-               dlgHtml.find("#preview-text").css("text-shadow", cssShadow)
+               appElement.find("#preview-text").css("text-shadow", cssShadow)
             }
-            dlgHtml.on(
+            appElement.on(
                "change",
                "#preview-shadow-type, #preview-shadow-color",
                updatePreview,
             )
             updatePreview()
          },
-         buttons: {
-            save: {
-               icon: '<i class="fas fa-check"></i>',
+         buttons: [
+            {
+               action: "save",
+               icon: "fa-solid fa-check",
                label: "Apply Shadow",
-               callback: (dlgHtml) => {
-                  typeInput.val(dlgHtml.find("#preview-shadow-type").val())
-                  colorInput.val(dlgHtml.find("#preview-shadow-color").val())
+               callback: (event, button, dialog) => {
+                  const appElement = $(dialog.element)
+                  typeInput.val(appElement.find("#preview-shadow-type").val())
+                  colorInput.val(appElement.find("#preview-shadow-color").val())
                   isSaved = true
                   this.#updateRowPreview(row)
                },
             },
-         },
-         default: "save",
+         ],
          close: () => {
             if (!isSaved && checkboxToRevert) {
                checkboxToRevert.checked = false
@@ -359,7 +374,7 @@ export class CustomRaritiesMenu extends FormApplication {
                this.#updateRowPreview(row)
             }
          },
-      }).render(true)
+      })
    }
 
    async #exportPack(event) {
@@ -374,7 +389,7 @@ export class CustomRaritiesMenu extends FormApplication {
          customs,
       }
 
-      saveDataToFile(
+      foundry.utils.saveDataToFile(
          JSON.stringify(exportData, null, 2),
          "text/json",
          "aztecs-rarity-pack.json",
@@ -392,7 +407,7 @@ export class CustomRaritiesMenu extends FormApplication {
          if (!file) return
 
          try {
-            const text = await readTextFromFile(file)
+            const text = await foundry.utils.readTextFromFile(file)
             const data = JSON.parse(text)
 
             if (
@@ -405,34 +420,36 @@ export class CustomRaritiesMenu extends FormApplication {
                )
             }
 
-            new Dialog({
-               title: "Import Rarity Pack",
+            await foundry.applications.api.DialogV2.wait({
+               window: { title: "Import Rarity Pack" },
                content: `
                   <p>How would you like to import this Rarity Pack?</p>
                   <hr>
                   <p><strong>Merge:</strong> Keeps your existing custom rarities. Updates existing ones if names match, and adds new ones from the pack.</p>
                   <p><strong>Overwrite:</strong> Deletes all your current custom rarities and completely replaces them with this pack.</p>
                `,
-               buttons: {
-                  merge: {
-                     icon: '<i class="fas fa-compress-arrows-alt"></i>',
+               buttons: [
+                  {
+                     action: "merge",
+                     icon: "fa-solid fa-compress-arrows-alt",
                      label: "Merge",
                      callback: async () =>
                         await this.#processImport(data, "merge"),
                   },
-                  overwrite: {
-                     icon: '<i class="fas fa-trash"></i>',
+                  {
+                     action: "overwrite",
+                     icon: "fa-solid fa-trash",
                      label: "Overwrite",
                      callback: async () =>
                         await this.#processImport(data, "overwrite"),
                   },
-                  cancel: {
-                     icon: '<i class="fas fa-times"></i>',
+                  {
+                     action: "cancel",
+                     icon: "fa-solid fa-times",
                      label: "Cancel",
                   },
-               },
-               default: "merge",
-            }).render(true)
+               ],
+            })
          } catch (e) {
             console.error("Aztec's Precious | Import failed:", e)
             ui.notifications.error(
@@ -509,54 +526,58 @@ export class CustomRaritiesMenu extends FormApplication {
       )
 
       this.close()
-      SettingsConfig.reloadConfirm({ world: true })
+      foundry.applications.settings.SettingsConfig.reloadConfirm({
+         world: true,
+      })
    }
 
-   async _updateObject(event, formData) {
-      const expanded = foundry.utils.expandObject(formData)
-      const oldCustoms = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES)
+   async _updateObject(event, form, formData) {
+      const expanded = foundry.utils.expandObject(formData.object)
 
+      if (!expanded || !expanded.rarities || !expanded.rarities.common) {
+         return
+      }
+
+      const oldCustoms = game.settings.get(MODULE_ID, SETTINGS.CUSTOM_RARITIES)
       const finalDefaults = {}
       const finalCustoms = {}
       const seenLabels = new Set()
 
-      if (expanded.rarities) {
-         for (const [key, data] of Object.entries(expanded.rarities)) {
-            const cleanLabel = data.label.trim()
-            if (!cleanLabel)
-               return ui.notifications.warn(
-                  "Aztec's Precious | Rarity labels cannot be empty.",
-               )
+      for (const [key, data] of Object.entries(expanded.rarities)) {
+         const cleanLabel = (data.label || "").trim()
+         if (!cleanLabel)
+            return ui.notifications.warn(
+               "Aztec's Precious | Rarity labels cannot be empty.",
+            )
 
-            if (seenLabels.has(cleanLabel.toLowerCase())) {
-               return ui.notifications.warn(
-                  `Aztec's Precious | Duplicate rarity name found: "${cleanLabel}".`,
-               )
-            }
-            seenLabels.add(cleanLabel.toLowerCase())
+         if (seenLabels.has(cleanLabel.toLowerCase())) {
+            return ui.notifications.warn(
+               `Aztec's Precious | Duplicate rarity name found: "${cleanLabel}".`,
+            )
+         }
+         seenLabels.add(cleanLabel.toLowerCase())
 
-            const isDefault = String(data.isDefault) === "true"
+         const isDefault = String(data.isDefault) === "true"
 
-            const processedData = {
-               label: cleanLabel,
-               color: data.color,
-               hasShadow: Boolean(data.hasShadow),
-               shadowType: data.shadowType || "sweetener",
-               shadowColor: data.shadowColor || "#000000",
-               sound: data.sound || "",
-               dropSound: data.dropSound || "",
-               iconEffect: data.iconEffect || "none",
-               order: Number(data.order) || 0,
-               beamColor: data.beamColor || data.color,
-               useBeam: Boolean(data.useBeam),
-            }
+         const processedData = {
+            label: cleanLabel,
+            color: data.color,
+            hasShadow: Boolean(data.hasShadow),
+            shadowType: data.shadowType || "sweetener",
+            shadowColor: data.shadowColor || "#000000",
+            sound: data.sound || "",
+            dropSound: data.dropSound || "",
+            iconEffect: data.iconEffect || "none",
+            order: Number(data.order) || 0,
+            beamColor: data.beamColor || data.color,
+            useBeam: Boolean(data.useBeam),
+         }
 
-            if (isDefault) {
-               finalDefaults[key] = processedData
-            } else {
-               processedData.dcMod = Number(data.dcMod) || 0
-               finalCustoms[key] = processedData
-            }
+         if (isDefault) {
+            finalDefaults[key] = processedData
+         } else {
+            processedData.dcMod = Number(data.dcMod) || 0
+            finalCustoms[key] = processedData
          }
       }
 
@@ -574,7 +595,9 @@ export class CustomRaritiesMenu extends FormApplication {
       await game.settings.set(MODULE_ID, SETTINGS.CUSTOM_RARITIES, finalCustoms)
 
       this.close()
-      SettingsConfig.reloadConfirm({ world: true })
+      foundry.applications.settings.SettingsConfig.reloadConfirm({
+         world: true,
+      })
    }
 
    async #cleanupDeletedRarities(deletedKeys) {

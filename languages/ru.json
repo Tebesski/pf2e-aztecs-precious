@@ -54,7 +54,9 @@
          "DefaultNameName": "Стандартное имя токена добычи",
          "DefaultNameHint": "Имя, которое дается токену добычи на карте.",
          "DefaultDropSoundName": "Стандартный звук выпадения добычи",
-         "DefaultOpenSoundName": "Стандартный звук открытия добычи"
+         "DefaultOpenSoundName": "Стандартный звук открытия добычи",
+         "DropNpcPlayerOwnedName": "Отключить выпадение добычи для NPC игроков",
+         "DropNpcPlayerOwnedHint": "Если включено, из NPC, принадлежащих игроку, не будет выпадать добыча после смерти."
       }
    }
 }

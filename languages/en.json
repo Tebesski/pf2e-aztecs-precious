@@ -54,7 +54,9 @@
          "DefaultNameName": "Default loot token name",
          "DefaultNameHint": "The name given to the loot token dropped on the map.",
          "DefaultDropSoundName": "Default loot drop sound",
-         "DefaultOpenSoundName": "Default loot open sound"
+         "DefaultOpenSoundName": "Default loot open sound",
+         "DropNpcPlayerOwnedName": "Disable loot drops for player-owned NPCs",
+         "DropNpcPlayerOwnedHint": "If enabled, NPCs that are owned by a player will not drop loot upon death."
       }
    }
 }

@@ -46,6 +46,15 @@ export function registerSettings() {
       default: false,
    })
 
+   game.settings.register(MODULE_ID, SETTINGS.LOOT_DROP_NPC_PLAYER_OWNED, {
+      name: "AZTEC.Settings.DropNpcPlayerOwnedName",
+      hint: "AZTEC.Settings.DropNpcPlayerOwnedHint",
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: true,
+   })
+
    game.settings.register(MODULE_ID, SETTINGS.LOOT_BEAM_ENABLE, {
       name: "AZTEC.Settings.BeamEnableName",
       hint: "AZTEC.Settings.BeamEnableHint",
@@ -201,6 +210,7 @@ Hooks.on("renderSettingsConfig", (app, htmlData) => {
 
       const dependentSettings = [
          SETTINGS.LOOT_DROP_PCS_ENABLE,
+         SETTINGS.LOOT_DROP_NPC_PLAYER_OWNED,
          SETTINGS.LOOT_BEAM_ENABLE,
          SETTINGS.LOOT_DROP_SOUND_ENABLE,
          SETTINGS.LOOT_OPEN_SOUND_ENABLE,

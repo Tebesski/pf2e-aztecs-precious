@@ -7,6 +7,7 @@ export const SETTINGS = {
    GLOBAL_INSET_SHADOW: "globalInsetShadow",
    LOOT_DROP_ENABLE: "lootDropEnable",
    LOOT_DROP_PCS_ENABLE: "lootDropPCsEnable",
+   LOOT_DROP_NPC_PLAYER_OWNED: "lootDropNpcPlayerOwned",
    LOOT_BEAM_ENABLE: "lootBeamEnable",
    LOOT_DROP_SOUND_ENABLE: "lootDropSoundEnable",
    LOOT_OPEN_SOUND_ENABLE: "lootOpenSoundEnable",
