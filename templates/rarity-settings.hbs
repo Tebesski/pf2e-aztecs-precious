@@ -3,12 +3,14 @@
     
     <div class="rarity-list unified-list flexcol" style="gap: 15px; margin-bottom: 20px;">
         {{#each allRarities as |rarity|}}
-        <div class="rarity-item flexcol {{#if rarity.isDefault}}default-item{{/if}}" data-key="{{rarity.key}}" style="border: 1px solid #5a5a5a; border-radius: 5px; padding: 10px; background: rgba(0, 0, 0, 0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-            
-            <input type="hidden" name="rarities.{{rarity.key}}.isDefault" value="{{rarity.isDefault}}" />
-            <input type="hidden" name="rarities.{{rarity.key}}.order" class="sort-order" value="{{rarity.order}}" />
-            <input type="hidden" name="rarities.{{rarity.key}}.shadowType" value="{{rarity.shadowType}}" />
-            <input type="hidden" name="rarities.{{rarity.key}}.shadowColor" value="{{rarity.shadowColor}}" />
+ <div class="rarity-item flexcol {{#if rarity.isDefault}}default-item{{/if}}" data-key="{{rarity.key}}" style="border: 1px solid #5a5a5a; border-radius: 5px; padding: 10px; background: rgba(0, 0, 0, 0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+    
+    <input type="hidden" name="rarities.{{rarity.key}}.isDefault" value="{{rarity.isDefault}}" />
+    <input type="hidden" name="rarities.{{rarity.key}}.order" class="sort-order" value="{{rarity.order}}" />
+    <input type="hidden" name="rarities.{{rarity.key}}.shadowType" value="{{rarity.shadowType}}" />
+    <input type="hidden" name="rarities.{{rarity.key}}.shadowColor" value="{{rarity.shadowColor}}" />
+    <input type="hidden" name="rarities.{{rarity.key}}.holoShadow" value="{{rarity.holoShadow}}" />
+    <input type="hidden" name="rarities.{{rarity.key}}.holoShadow2" value="{{rarity.holoShadow2}}" />
             
             <div class="flexrow" style="align-items: center; margin-bottom: 10px; gap: 10px;">
                 <div style="flex: 0.1; cursor: grab; text-align: center; color: #7a7971;" class="drag-handle">

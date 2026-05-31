@@ -3,9 +3,60 @@ import { injectDynamicStyles } from "./styles.js"
 
 function getShadow(data) {
    if (!data.hasShadow) return "none"
-   return data.shadowType === "sweetener"
-      ? `0px 0px 1px ${data.shadowColor}`
-      : `1px 1px 1px ${data.shadowColor}`
+   if (data.shadowType === "sweetener") return `0px 0px 1px ${data.shadowColor}`
+   if (data.shadowType === "hologram") return `0 0 8px ${data.shadowColor}`
+   return `1px 1px 1px ${data.shadowColor}`
+}
+
+export function applyShadowToElement(el, data) {
+   el.each((_, node) => {
+      node.style.removeProperty("text-shadow")
+      node.style.removeProperty("animation")
+
+      if (data.hasShadow && data.shadowType === "hologram") {
+         node.style.setProperty(
+            "animation",
+            "aztec-hologram-text-glitch 0.8s infinite",
+            "important",
+         )
+         node.style.setProperty(
+            "--aztec-holo-color",
+            data.shadowColor || "#000000",
+         )
+         node.style.setProperty(
+            "--aztec-holo-glitch1",
+            data.holoShadow || "#00ffff",
+         )
+         node.style.setProperty(
+            "--aztec-holo-glitch2",
+            data.holoShadow2 || "#ff00ff",
+         )
+      } else if (data.hasShadow && data.shadowType === "rainbow") {
+         node.style.setProperty(
+            "animation",
+            "aztec-rainbow-aura 2.5s linear infinite",
+            "important",
+         )
+      } else if (data.hasShadow && data.shadowType === "fire") {
+         node.style.setProperty(
+            "animation",
+            "aztec-fire-aura 0.6s alternate infinite",
+            "important",
+         )
+      } else if (data.hasShadow && data.shadowType === "metallic") {
+         node.style.setProperty(
+            "animation",
+            "aztec-metallic-aura 2s ease-in-out infinite",
+            "important",
+         )
+         node.style.setProperty(
+            "--aztec-holo-color",
+            data.shadowColor || "#ffb338",
+         )
+      } else if (data.hasShadow) {
+         node.style.setProperty("text-shadow", getShadow(data), "important")
+      }
+   })
 }
 
 function getHighestRarity(actor, allRarities) {
@@ -29,7 +80,6 @@ function getHighestRarity(actor, allRarities) {
    return highest
 }
 
-// --- PIXI BEAM GENERATOR ---
 const beamTextures = {}
 
 const activeBeams = new Set()
@@ -522,7 +572,7 @@ export function injectRarities() {
 
       if (titleEl.length) {
          titleEl.css("color", customData.color)
-         titleEl.css("text-shadow", getShadow(customData))
+         applyShadowToElement(titleEl, customData)
       }
 
       if (imageEl.length) {
@@ -548,7 +598,7 @@ export function injectRarities() {
          if ($span.text().trim().toLowerCase() === rarity.toLowerCase()) {
             $span.text(customData.label)
             $span.css("color", customData.color)
-            $span.css("text-shadow", getShadow(customData))
+            applyShadowToElement($span, customData)
          }
       })
    }
@@ -657,7 +707,7 @@ export function injectRarities() {
             const customData = allRarities[rarity]
             const titleEl = $(el).find(".name a")
             titleEl.css("color", customData.color)
-            titleEl.css("text-shadow", getShadow(customData))
+            applyShadowToElement(titleEl, customData)
          }
       })
 
@@ -673,7 +723,7 @@ export function injectRarities() {
             const imageEl = $(el).find(".item-image")
 
             titleEl.css("color", customData.color)
-            titleEl.css("text-shadow", getShadow(customData))
+            applyShadowToElement(titleEl, customData)
 
             if (useGlobalInset) imageEl.addClass(`aztec-global-inset-${rarity}`)
             if (customData.iconEffect && customData.iconEffect !== "none") {
@@ -706,7 +756,7 @@ export function injectRarities() {
          const titleInput = html.find('input[name="name"]')
 
          titleInput.css("color", customData.color)
-         titleInput.css("text-shadow", getShadow(customData))
+         applyShadowToElement(titleInput, customData)
 
          if (
             (customData.iconEffect && customData.iconEffect !== "none") ||
@@ -764,7 +814,7 @@ export function injectRarities() {
          )
 
          titleEl.css("color", customData.color)
-         titleEl.css("text-shadow", getShadow(customData))
+         applyShadowToElement(titleEl, customData)
 
          if (
             (customData.iconEffect && customData.iconEffect !== "none") ||

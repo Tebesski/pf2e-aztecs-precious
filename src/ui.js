@@ -1,4 +1,6 @@
 import { MODULE_ID, SETTINGS } from "./constants.js"
+import { hexToRgba } from "./styles.js"
+import { applyShadowToElement } from "./logic.js"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -60,6 +62,14 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
             glow: "AZTEC.UI.EffectGlow",
             shimmer: "AZTEC.UI.EffectShimmer",
             pulse: "AZTEC.UI.EffectPulse",
+            hologram: "AZTEC.UI.EffectHologram",
+            rainbow: "AZTEC.UI.EffectRainbow",
+            bigElectro: "AZTEC.UI.EffectBigElectro",
+            neonGlass: "AZTEC.UI.EffectNeonGlass",
+            void: "AZTEC.UI.EffectVoid",
+            toxic: "AZTEC.UI.EffectToxic",
+            purpleElectro: "AZTEC.UI.EffectPurpleElectro",
+            pulseBorder: "AZTEC.UI.EffectPulseBorder",
          },
       }
    }
@@ -118,7 +128,7 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
          this.#updateRowPreview($(el))
       })
 
-      html.on("change", "color-picker, select[name$='.iconEffect']", (e) => {
+      html.on("change", "color-picker, select[name*='.iconEffect']", (e) => {
          const row = $(e.currentTarget).closest(".rarity-item")
          this.#updateRowPreview(row)
       })
@@ -142,6 +152,15 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
             glow: "AZTEC.UI.EffectGlow",
             shimmer: "AZTEC.UI.EffectShimmer",
             pulse: "AZTEC.UI.EffectPulse",
+            electro: "AZTEC.UI.EffectElectro",
+            hologram: "AZTEC.UI.EffectHologram",
+            rainbow: "AZTEC.UI.EffectRainbow",
+            bigElectro: "AZTEC.UI.EffectBigElectro",
+            neonGlass: "AZTEC.UI.EffectNeonGlass",
+            void: "AZTEC.UI.EffectVoid",
+            toxic: "AZTEC.UI.EffectToxic",
+            purpleElectro: "AZTEC.UI.EffectPurpleElectro",
+            pulseBorder: "AZTEC.UI.EffectPulseBorder",
          }
 
          const newRowHTML =
@@ -276,47 +295,125 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
       labelInput.css("background", "#f9f9f9")
       previewText.css("color", color)
 
-      if (hasShadow) {
-         const shadowStr =
-            shadowType === "sweetener"
-               ? `0px 0px 1px ${shadowColor}`
-               : `1px 1px 1px ${shadowColor}`
-         labelInput.css("text-shadow", shadowStr)
-         previewText.css("text-shadow", shadowStr)
-      } else {
-         labelInput.css("text-shadow", "none")
-         previewText.css("text-shadow", "none")
+      const mockData = {
+         hasShadow: hasShadow,
+         shadowType: shadowType,
+         shadowColor: shadowColor,
+         holoShadow: row.find('input[name$=".holoShadow"]').val() || "#00ffff",
+         holoShadow2:
+            row.find('input[name$=".holoShadow2"]').val() || "#ff00ff",
       }
+      applyShadowToElement(labelInput, mockData)
+      applyShadowToElement(previewText, mockData)
 
       previewWrapper.removeClass((index, className) => {
          return (
-            className.match(/\baztec-(effect|global-inset)\S*/g) || []
+            className.match(/\baztec-(effect|global-inset|preview)\S*/g) || []
          ).join(" ")
       })
+
+      let previewStyle = row.find("style.aztec-preview-style")
+      if (!previewStyle.length) {
+         previewStyle = $("<style class='aztec-preview-style'></style>")
+         row.find(".rarity-preview").prepend(previewStyle)
+      }
+
+      const glowColor = hexToRgba(color, 0.5)
+      const globalInsetRgba = hexToRgba(color, 0.8)
+      const shimmerColor = hexToRgba(color, 0.6)
+
+      let css = `
+        .aztec-preview-global-inset-${key} { position: relative !important; }
+        .aztec-preview-global-inset-${key}::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            box-shadow: inset 0px 0px 4px 1px ${globalInsetRgba} !important;
+            pointer-events: none; z-index: 9;
+        }
+        .aztec-preview-effect-shimmer-${key} { position: relative !important; overflow: hidden !important; }
+        .aztec-preview-effect-shimmer-${key}::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(105deg, transparent 20%, ${shimmerColor} 50%, transparent 80%);
+            background-size: 200% 100%; background-repeat: no-repeat;
+            animation: aztec-shimmer-anim 3s infinite linear;
+            pointer-events: none; z-index: 10;
+        }
+        .aztec-preview-effect-glow-${key} { box-shadow: 0 0 15px 3px ${glowColor} !important; overflow: visible !important; }
+        .aztec-preview-effect-pulse-${key} {
+            --aztec-pulse-color1: ${color};
+            --aztec-pulse-color2: ${shadowColor || color};
+            animation: aztec-pulse-generic 1.5s infinite ease-in-out !important;
+            overflow: visible !important;
+        }
+        .aztec-preview-effect-hologram-${key} {
+            position: relative !important; overflow: hidden !important;
+            border: 2px solid ${hexToRgba(color, 0.5)} !important;
+            box-shadow: 0 0 15px ${hexToRgba(color, 0.3)} !important;
+            background: ${hexToRgba(color, 0.1)} !important;
+        }
+        .aztec-preview-effect-hologram-${key}::after {
+            content: ''; position: absolute; left: 0; right: 0; height: 2px;
+            background: linear-gradient(to right, transparent, ${hexToRgba(color, 0.8)}, transparent);
+            top: 0; animation: aztec-hologram-scan 2s linear infinite; filter: blur(1px);
+            pointer-events: none; z-index: 2;
+        }
+        .aztec-preview-effect-rainbow-${key} { position: relative !important; z-index: 0 !important; }
+        .aztec-preview-effect-rainbow-${key}::before {
+            content: ''; position: absolute; top: -2px; left: -2px;
+            background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 400%; z-index: -1; filter: blur(5px);
+            width: calc(100% + 4px); height: calc(100% + 4px);
+            animation: aztec-glowing 20s linear infinite; border-radius: 4px;
+        }
+      `
+
+      const webpBorders = [
+         { id: "bigElectro", file: "bigElectro" },
+         { id: "neonGlass", file: "neonGlass" },
+         { id: "void", file: "void" },
+         { id: "toxic", file: "toxic" },
+         { id: "purpleElectro", file: "purpleElectro" },
+         { id: "pulseBorder", file: "pulse" },
+      ]
+
+      webpBorders.forEach((b) => {
+         css += `
+        .aztec-preview-effect-${b.id}-${key} { position: relative !important; overflow: visible !important; }
+        .aztec-preview-effect-${b.id}-${key}::after {
+            content: ''; position: absolute; top: -20%; left: -20%; width: 140%; height: 140%;
+            background-image: url('/modules/${MODULE_ID}/assets/borders/${b.file}.webp');
+            background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; z-index: 10;
+        }
+         `
+      })
+
+      previewStyle.html(css)
 
       const useGlobalInset = game.settings.get(
          MODULE_ID,
          SETTINGS.GLOBAL_INSET_SHADOW,
       )
 
-      if (useGlobalInset) previewWrapper.addClass(`aztec-global-inset-${key}`)
+      if (useGlobalInset)
+         previewWrapper.addClass(`aztec-preview-global-inset-${key}`)
       if (fxSelect !== "none")
-         previewWrapper.addClass(`aztec-effect-${fxSelect}-${key}`)
+         previewWrapper.addClass(`aztec-preview-effect-${fxSelect}-${key}`)
    }
 
    async #openShadowDialog(row, checkboxToRevert = null) {
       const prefix = "rarities"
       const key = row.data("key")
-      const label =
-         row.find(`input[name="${prefix}.${key}.label"]`).val() || "New Rarity"
-      const typeInput = row.find(`input[name="${prefix}.${key}.shadowType"]`)
-      const colorInput = row.find(`input[name="${prefix}.${key}.shadowColor"]`)
+      const label = row.find(`input[name$=".label"]`).val() || "New Rarity"
       const baseColor =
-         row.find(`color-picker[name="${prefix}.${key}.color"]`).val() ||
-         "#ffffff"
+         row.find(`color-picker[name$=".color"]`).val() || "#ffffff"
 
+      const typeInput = row.find('input[name$=".shadowType"]')
       const currentType = typeInput.val() || "sweetener"
+
+      const colorInput = row.find('input[name$=".shadowColor"]')
       const currentColor = colorInput.val() || "#000000"
+
+      const holoShadowInput = row.find('input[name$=".holoShadow"]')
+      const holoShadow2Input = row.find('input[name$=".holoShadow2"]')
 
       const templateData = {
          label,
@@ -324,7 +421,14 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
          currentColor,
          isSweetener: currentType === "sweetener",
          isEpic: currentType === "epic",
+         isHologram: currentType === "hologram",
+         isRainbow: currentType === "rainbow",
+         isFire: currentType === "fire",
+         isMetallic: currentType === "metallic",
+         holoShadow: holoShadowInput.val() || "#00ffff",
+         holoShadow2: holoShadow2Input.val() || "#ff00ff",
       }
+
       const contentHTML = await foundry.applications.handlebars.renderTemplate(
          `modules/${MODULE_ID}/templates/shadow-dialog.hbs`,
          templateData,
@@ -340,15 +444,38 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
             const updatePreview = () => {
                const sType = appElement.find("#preview-shadow-type").val()
                const sColor = appElement.find("#preview-shadow-color").val()
-               const cssShadow =
-                  sType === "sweetener"
-                     ? `0px 0px 1px ${sColor}`
-                     : `1px 1px 1px ${sColor}`
-               appElement.find("#preview-text").css("text-shadow", cssShadow)
+               const hShadow1 = appElement.find("#preview-holo-shadow").val()
+               const hShadow2 = appElement.find("#preview-holo-shadow2").val()
+
+               const mockData = {
+                  hasShadow: true,
+                  shadowType: sType,
+                  shadowColor: sColor,
+                  holoShadow: hShadow1,
+                  holoShadow2: hShadow2,
+               }
+               applyShadowToElement(appElement.find("#preview-text"), mockData)
+
+               appElement
+                  .find(".holo-settings")
+                  .css("display", sType === "hologram" ? "flex" : "none")
+               appElement
+                  .find(".standard-shadow-settings")
+                  .css(
+                     "display",
+                     sType === "hologram" ||
+                        sType === "rainbow" ||
+                        sType === "fire"
+                        ? "none"
+                        : "flex",
+                  )
+               appElement
+                  .find(".standard-shadow-settings")
+                  .css("display", sType === "hologram" ? "none" : "flex")
             }
             appElement.on(
                "change",
-               "#preview-shadow-type, #preview-shadow-color",
+               "#preview-shadow-type, #preview-shadow-color, #preview-holo-shadow, #preview-holo-shadow2",
                updatePreview,
             )
             updatePreview()
@@ -362,6 +489,12 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
                   const appElement = $(dialog.element)
                   typeInput.val(appElement.find("#preview-shadow-type").val())
                   colorInput.val(appElement.find("#preview-shadow-color").val())
+                  holoShadowInput.val(
+                     appElement.find("#preview-holo-shadow").val(),
+                  )
+                  holoShadow2Input.val(
+                     appElement.find("#preview-holo-shadow2").val(),
+                  )
                   isSaved = true
                   this.#updateRowPreview(row)
                },
@@ -565,6 +698,8 @@ export class CustomRaritiesMenu extends HandlebarsApplicationMixin(
             hasShadow: Boolean(data.hasShadow),
             shadowType: data.shadowType || "sweetener",
             shadowColor: data.shadowColor || "#000000",
+            holoShadow: data.holoShadow || "#00ffff",
+            holoShadow2: data.holoShadow2 || "#ff00ff",
             sound: data.sound || "",
             dropSound: data.dropSound || "",
             iconEffect: data.iconEffect || "none",

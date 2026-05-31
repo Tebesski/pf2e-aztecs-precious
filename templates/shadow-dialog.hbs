@@ -4,18 +4,39 @@
         <select id="preview-shadow-type" style="flex: 2; color: #ffffff; background: #222; border: 1px solid #555;">
             <option value="sweetener" {{#if isSweetener}}selected{{/if}}>{{localize "AZTEC.UI.Sweetener"}}</option>
             <option value="epic" {{#if isEpic}}selected{{/if}}>{{localize "AZTEC.UI.Epic"}}</option>
+            <option value="hologram" {{#if isHologram}}selected{{/if}}>{{localize "AZTEC.UI.EffectHologram"}}</option>
+            <option value="rainbow" {{#if isRainbow}}selected{{/if}}>{{localize "AZTEC.UI.EffectRainbow"}}</option>
+            <option value="fire" {{#if isFire}}selected{{/if}}>{{localize "AZTEC.UI.EffectFire"}}</option>
+            <option value="metallic" {{#if isMetallic}}selected{{/if}}>{{localize "AZTEC.UI.EffectMetallic"}}</option>
         </select>
     </div>
+    
     <div class="flexcol" style="background: #222; padding: 15px; border-radius: 5px; gap: 15px;">
         <div style="text-align: center;">
             <span id="preview-text" style="font-size: 24px; font-weight: bold; font-family: 'Signika', sans-serif; color: {{baseColor}};">
                 {{label}}
             </span>
         </div>
-        <div class="flexrow" style="align-items: center;">
+        
+        <div class="flexrow standard-shadow-settings" style="align-items: center; display: {{#if isHologram}}none{{else if isRainbow}}none{{else}}flex{{/if}};">
             <label style="flex: 1; color: #fff; text-align: right; padding-right: 10px;">{{localize "AZTEC.UI.ShadowColour"}}</label>
             <div style="flex: 1;">
                 <color-picker id="preview-shadow-color" value="{{currentColor}}"></color-picker>
+            </div>
+        </div>
+
+        <div class="flexcol holo-settings" style="display: {{#if isHologram}}flex{{else}}none{{/if}}; gap: 15px;">
+            <div class="flexrow" style="align-items: center;">
+                <label style="flex: 1; color: #fff; text-align: right; padding-right: 10px;">{{localize "AZTEC.UI.HoloGlitch1"}}</label>
+                <div style="flex: 1;">
+                    <color-picker id="preview-holo-shadow" value="{{holoShadow}}"></color-picker>
+                </div>
+            </div>
+            <div class="flexrow" style="align-items: center;">
+                <label style="flex: 1; color: #fff; text-align: right; padding-right: 10px;">{{localize "AZTEC.UI.HoloGlitch2"}}</label>
+                <div style="flex: 1;">
+                    <color-picker id="preview-holo-shadow2" value="{{holoShadow2}}"></color-picker>
+                </div>
             </div>
         </div>
     </div>
